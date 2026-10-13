@@ -3,3 +3,4 @@ __pycache__/
 .env
 posts/*/.*.tmp/
 preview.html
+preview-trilhas.html
