@@ -18,7 +18,7 @@ iCloud (Documentos MW Capital/Instagram)
         │
         │  sync_icloud.py — no Mac, a cada 15 min (app "MW Instagram Sync")
         ▼
-GitHub: lucio-mw/mw-instagram-automatico (privado)
+GitHub: lucio-mw/mw-instagram-automatico (público: o Instagram baixa as mídias daqui)
   posts/carrosseis/<nome>/  slides cortados em 4:5 + só a seção === LEGENDA ===
   posts/reels/<nome>/       video.mp4 + legenda.txt
         │
@@ -51,7 +51,10 @@ Em *Settings → Secrets and variables → Actions* do repositório:
 | Secret | Valor |
 |--------|-------|
 | `IG_ACCESS_TOKEN` | Token gerado no app da Meta (*Configuração da API com login do Instagram*) |
-| `IMGBB_API_KEY` | Chave de [api.imgbb.com](https://api.imgbb.com) (hospeda as imagens dos carrosséis por 24h) |
+
+O repositório é **público** porque a API exige uma URL pública para cada imagem e
+vídeo. Só entram aqui as mídias e a legenda final; as notas internas dos
+carrosséis (tom, compliance, pesquisa) ficam no iCloud.
 
 > ⚠️ O token do Instagram expira em **60 dias**. Gere outro no painel da Meta e
 > atualize o secret: `gh secret set IG_ACCESS_TOKEN -R lucio-mw/mw-instagram-automatico`

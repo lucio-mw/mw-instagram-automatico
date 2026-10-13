@@ -14,26 +14,21 @@ Os posts saem em ordem (número/data do começo do nome). Depois de publicado, a
 subpasta é apagada e fica só um registro em posts/<fila>/publicados/<nome>.txt,
 que o sync_icloud.py usa para marcar a pasta original no iCloud como postada.
 
-Carrosséis: a API exige que cada imagem esteja numa URL pública. Se
-IMGBB_API_KEY estiver definida, a imagem vai para o ImgBB por 24h (necessário
-com repositório privado); senão usa IMAGE_BASE_URL ou o raw.githubusercontent.com
-do repositório (precisa ser público).
-Reels: o vídeo é enviado direto para o Instagram (upload resumível), sem
-hospedagem externa.
+A API exige que cada imagem e vídeo esteja numa URL pública: o Instagram baixa
+os arquivos direto do raw.githubusercontent.com deste repositório (que por isso
+é público), ou de MEDIA_BASE_URL se definida.
 
 Variáveis de ambiente:
   IG_USER_ID        ID da conta do Instagram (padrão "me" = dona do token)
   IG_ACCESS_TOKEN   token de acesso de longa duração (obrigatória)
   IG_API_HOST       graph.instagram.com (padrão, Login do Instagram) ou graph.facebook.com
   IG_API_VERSION    padrão v23.0
-  IMGBB_API_KEY     ver acima
-  IMAGE_BASE_URL    ver acima
+  MEDIA_BASE_URL    opcional, ver acima
   DRY_RUN=1         mostra o que seria publicado sem publicar nada
 
 Só usa a biblioteca padrão do Python (sem dependências).
 """
 
-import base64
 import json
 import os
 import re
@@ -62,10 +57,10 @@ def env(name, default=None, required=False):
     return value
 
 
-def request(url, data=None, raw=None, headers=None):
-    """GET (sem data), POST form-encoded (data) ou POST binário (raw). Devolve o JSON."""
-    body = urllib.parse.urlencode(data).encode() if data is not None else raw
-    req = urllib.request.Request(url, data=body, headers=headers or {})
+def request(url, data=None):
+    """Faz GET (data=None) ou POST form-encoded e devolve o JSON da resposta."""
+    body = urllib.parse.urlencode(data).encode() if data is not None else None
+    req = urllib.request.Request(url, data=body)
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
             return json.load(resp)
@@ -93,24 +88,16 @@ def next_post(queue_dir):
     return min(folders, key=sort_key) if folders else None
 
 
-def public_url(image):
-    imgbb_key = env("IMGBB_API_KEY")
-    if imgbb_key:
-        result = request(
-            "https://api.imgbb.com/1/upload?expiration=86400&key=" + imgbb_key,
-            {"image": base64.b64encode(image.read_bytes()).decode()},
-        )
-        return result["data"]["url"]
-
-    rel_path = image.relative_to(ROOT).as_posix()
-    base = env("IMAGE_BASE_URL")
+def public_url(path):
+    rel_path = urllib.parse.quote(path.relative_to(ROOT).as_posix())
+    base = env("MEDIA_BASE_URL")
     if not base:
         repo = env("GITHUB_REPOSITORY")
-        branch = env("GITHUB_REF_NAME", "main")
         if not repo:
-            sys.exit("Erro: defina IMGBB_API_KEY ou IMAGE_BASE_URL para rodar fora do GitHub Actions.")
-        base = f"https://raw.githubusercontent.com/{repo}/{branch}"
-    return f"{base.rstrip('/')}/{urllib.parse.quote(rel_path)}"
+            sys.exit("Erro: defina MEDIA_BASE_URL para rodar fora do GitHub Actions.")
+        # o commit exato evita cache de versões antigas no raw.githubusercontent.com
+        base = f"https://raw.githubusercontent.com/{repo}/{env('GITHUB_SHA', 'main')}"
+    return f"{base.rstrip('/')}/{rel_path}"
 
 
 class Instagram:
@@ -162,24 +149,10 @@ class Instagram:
         return self.publish(container)
 
     def post_reel(self, video, caption):
-        created = self.create_container(
-            media_type="REELS", upload_type="resumable", caption=caption, share_to_feed="true"
-        )
-        container = created["id"]
-        upload_uri = created.get("uri") or (
-            f"https://rupload.facebook.com/ig-api-upload/{self.version}/{container}"
-        )
-        data = video.read_bytes()
-        request(
-            upload_uri,
-            raw=data,
-            headers={
-                "Authorization": f"OAuth {self.token}",
-                "offset": "0",
-                "file_size": str(len(data)),
-            },
-        )
-        print(f"  vídeo enviado ({len(data) // 1024} KB), aguardando processamento...")
+        container = self.create_container(
+            media_type="REELS", video_url=public_url(video), caption=caption, share_to_feed="true"
+        )["id"]
+        print("  vídeo enviado, aguardando processamento...")
         self.wait_ready(container)
         return self.publish(container)
 
