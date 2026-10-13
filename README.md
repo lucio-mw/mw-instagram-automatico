@@ -1,80 +1,75 @@
-# Post diário no Instagram
+# Instagram automático — MW Capital
 
-Publica automaticamente **um post por dia** no Instagram, usando a API oficial da Meta
-e rodando de graça no GitHub Actions (funciona com o computador desligado).
+Publica automaticamente no **@mwcapital.inc**, usando a API oficial da Meta
+(Login do Instagram) e o GitHub Actions — funciona com o Mac desligado.
+
+| Horário (Brasília) | O quê |
+|--------------------|-------|
+| 09:00 | Reel da *Postagem Diaria Instagram* |
+| 12:00 | Carrossel novo da *Carrosseis Claude* (se houver) |
+| 19:00 | Reel da *Postagem Diaria Instagram* |
 
 ## Como funciona
 
-1. Você coloca as imagens na pasta `posts/`, com a legenda num `.txt` de mesmo nome:
-   ```
-   posts/
-     001.jpg   001.txt
-     002.jpg   002.txt
-   ```
-2. Todo dia às 12:00 (Brasília), o GitHub Actions roda `post_instagram.py`, que publica
-   a **primeira imagem em ordem alfabética**.
-3. Depois de publicado, o par imagem + legenda vai para `posts/publicados/`.
-   Se a fila estiver vazia, nada acontece.
-
-Regras do Instagram: imagens **JPEG** (`.jpg`), proporção entre 4:5 e 1.91:1, até 8 MB.
-Legenda até 2.200 caracteres e 30 hashtags. Limite de 50 posts por dia via API.
-
-## Configuração (uma vez só)
-
-### 1. Conta do Instagram
-
-- A conta precisa ser **Profissional** (Business ou Criador de conteúdo).
-- Crie um app em [developers.facebook.com](https://developers.facebook.com/apps) e adicione
-  o produto **Instagram**. Há dois caminhos:
-  - **Login do Instagram** (mais simples, não precisa de Página do Facebook): permissões
-    `instagram_business_basic` e `instagram_business_content_publish`. Nesse caso defina a
-    variável `IG_API_HOST` = `graph.instagram.com` (passo 3).
-  - **Login do Facebook**: a conta do Instagram precisa estar ligada a uma Página do Facebook.
-    Permissões `instagram_basic`, `instagram_content_publish`, `pages_show_list`,
-    `pages_read_engagement`.
-- Gere um **token de longa duração** e anote o **ID da conta do Instagram** (`IG_USER_ID`).
-
-> ⚠️ Tokens de longa duração expiram em **60 dias**. Renove antes disso e atualize o
-> secret, ou (no caminho do Facebook) use um token de *System User* do Business Manager,
-> que não expira.
-
-### 2. Repositório no GitHub
-
-Suba esta pasta para um repositório novo no GitHub.
-
-- **Repositório público:** funciona direto — o Instagram baixa a imagem pelo
-  `raw.githubusercontent.com`.
-- **Repositório privado:** o Instagram não consegue acessar a imagem. Crie uma conta
-  grátis no [ImgBB](https://api.imgbb.com/), pegue a API key e cadastre o secret
-  `IMGBB_API_KEY`. O script envia a imagem para lá temporariamente (apagada em 24h).
-
-### 3. Secrets e variáveis
-
-No repositório: **Settings → Secrets and variables → Actions**.
-
-| Tipo     | Nome              | Valor                                              |
-|----------|-------------------|----------------------------------------------------|
-| Secret   | `IG_USER_ID`      | ID da conta do Instagram                           |
-| Secret   | `IG_ACCESS_TOKEN` | Token de longa duração                             |
-| Secret   | `IMGBB_API_KEY`   | Só se o repositório for privado                    |
-| Variable | `IG_API_HOST`     | `graph.instagram.com` se usar o Login do Instagram |
-
-### 4. Testar
-
-Na aba **Actions → Post diário no Instagram → Run workflow**:
-- marque **"Só simular"** para ver qual post seria publicado sem publicar;
-- desmarque para publicar de verdade agora.
-
-## Mudar o horário
-
-Edite a linha `cron` em `.github/workflows/instagram-diario.yml` (horário em UTC;
-Brasília = UTC−3). Ex.: `"0 21 * * *"` = 18:00 em Brasília. O GitHub pode atrasar
-execuções agendadas em alguns minutos.
-
-## Rodar no seu computador
-
-```bash
-IG_USER_ID=... IG_ACCESS_TOKEN=... IMGBB_API_KEY=... python3 post_instagram.py
+```
+iCloud (Documentos MW Capital/Instagram)
+  ├─ Carrosseis Claude/2026-..-..-tema/   slides .jpg + legenda.txt
+  └─ Postagem Diaria Instagram/NN-tema/   imagem_reel.mp4 + legenda.txt
+        │
+        │  sync_icloud.py — no Mac, a cada 15 min (app "MW Instagram Sync")
+        ▼
+GitHub: lucio-mw/mw-instagram-automatico (privado)
+  posts/carrosseis/<nome>/  slides cortados em 4:5 + só a seção === LEGENDA ===
+  posts/reels/<nome>/       video.mp4 + legenda.txt
+        │
+        │  post_instagram.py — GitHub Actions nos horários acima
+        ▼
+Instagram  →  registra em posts/<fila>/publicados/<nome>.txt
+        │
+        │  sync_icloud.py marca no iCloud:
+        ▼
+  carrossel → movido para Carrosseis Claude/Postados/Postado-<nome>
+  reel      → renomeado para Postagem Diaria Instagram/Postado-<nome>
 ```
 
-Use `DRY_RUN=1` para só simular.
+- Para entrar na fila, um conteúdo precisa ter `legenda.txt`, a mídia, e ficar
+  5 minutos sem alteração (para não pegar um carrossel ainda sendo gerado).
+- Os posts saem em ordem: data (carrosséis) ou número (reels).
+- Se uma legenda passar de 2.200 caracteres ou 30 hashtags, ou um carrossel tiver
+  mais de 10 slides, o Mac mostra uma notificação e o post não entra na fila.
+- **Para não postar algo que já está na fila:** apague a pasta em `posts/` no GitHub.
+- O Mac só precisa estar ligado em algum momento antes do horário do post.
+
+## Secrets do GitHub
+
+Em *Settings → Secrets and variables → Actions* do repositório:
+
+| Secret | Valor |
+|--------|-------|
+| `IG_ACCESS_TOKEN` | Token gerado no app da Meta (*Configuração da API com login do Instagram*) |
+| `IMGBB_API_KEY` | Chave de [api.imgbb.com](https://api.imgbb.com) (hospeda as imagens dos carrosséis por 24h) |
+
+> ⚠️ O token do Instagram expira em **60 dias**. Gere outro no painel da Meta e
+> atualize o secret: `gh secret set IG_ACCESS_TOKEN -R lucio-mw/mw-instagram-automatico`
+
+## Comandos úteis
+
+```bash
+# Publicar/simular manualmente (ou pela aba Actions → Run workflow)
+gh workflow run instagram.yml -R lucio-mw/mw-instagram-automatico -f fila=reels -f dry_run=true
+
+# Ver as últimas execuções
+gh run list -R lucio-mw/mw-instagram-automatico
+
+# Log da sincronização do Mac
+tail -f ~/Library/Logs/mw-instagram-sync.log
+
+# Reinstalar / remover a sincronização do Mac
+./instalar_mac.sh
+./instalar_mac.sh --remover
+```
+
+## Mudar horários
+
+Edite os `cron` em `.github/workflows/instagram.yml` (horário em UTC; Brasília = UTC−3).
+Se mudar o horário do carrossel, mude também o `'0 15 * * *'` na linha `FILA:`.
