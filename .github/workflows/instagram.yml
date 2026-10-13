@@ -1,0 +1,59 @@
+name: Instagram automático
+
+on:
+  schedule:
+    # Horários em UTC (Brasília = UTC-3). O GitHub pode atrasar alguns minutos.
+    - cron: "0 12 * * *" # 09:00 Brasília - reel
+    - cron: "0 15 * * *" # 12:00 Brasília - carrossel (se houver novo)
+    - cron: "0 22 * * *" # 19:00 Brasília - reel
+  workflow_dispatch: # rodar manualmente pela aba Actions
+    inputs:
+      fila:
+        description: "O que publicar"
+        type: choice
+        options: [reels, carrosseis]
+        default: reels
+      dry_run:
+        description: "Só simular (não publica)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write # para registrar o que foi publicado
+
+concurrency:
+  group: instagram-post
+  cancel-in-progress: false
+
+jobs:
+  postar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Publicar próximo post da fila
+        env:
+          FILA: ${{ inputs.fila || (github.event.schedule == '0 15 * * *' && 'carrosseis' || 'reels') }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IMGBB_API_KEY: ${{ secrets.IMGBB_API_KEY }}
+          IG_API_HOST: ${{ vars.IG_API_HOST }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: python post_instagram.py "$FILA"
+
+      - name: Registrar post como publicado
+        run: |
+          git add -A posts
+          if git diff --cached --quiet; then
+            echo "Nada para registrar."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Publicado no Instagram em $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git pull --rebase
+          git push
