@@ -22,9 +22,9 @@ Reels: o vídeo é enviado direto para o Instagram (upload resumível), sem
 hospedagem externa.
 
 Variáveis de ambiente:
-  IG_USER_ID        ID da conta profissional do Instagram (obrigatória)
+  IG_USER_ID        ID da conta do Instagram (padrão "me" = dona do token)
   IG_ACCESS_TOKEN   token de acesso de longa duração (obrigatória)
-  IG_API_HOST       graph.facebook.com (padrão) ou graph.instagram.com
+  IG_API_HOST       graph.instagram.com (padrão, Login do Instagram) ou graph.facebook.com
   IG_API_VERSION    padrão v23.0
   IMGBB_API_KEY     ver acima
   IMAGE_BASE_URL    ver acima
@@ -115,9 +115,9 @@ def public_url(image):
 
 class Instagram:
     def __init__(self):
-        host = env("IG_API_HOST", "graph.facebook.com")
+        host = env("IG_API_HOST", "graph.instagram.com")
         self.version = env("IG_API_VERSION", "v23.0")
-        self.user_id = env("IG_USER_ID", required=True)
+        self.user_id = env("IG_USER_ID", "me")
         self.token = env("IG_ACCESS_TOKEN", required=True)
         self.api = f"https://{host}/{self.version}"
 
