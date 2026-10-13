@@ -222,11 +222,17 @@ def main():
         print(f"Próximo carrossel: {folder.name} ({len(media)} imagens)")
     print(f"Legenda:\n{caption or '(sem legenda)'}\n")
 
+    ig = Instagram()
+
     if env("DRY_RUN") == "1":
+        account = request(
+            f"{ig.api}/{ig.user_id}?fields=username"
+            f"&access_token={urllib.parse.quote(ig.token)}"
+        )
+        print(f"Conexão OK com a conta @{account.get('username')}.")
         print("DRY_RUN=1: nada foi publicado.")
         return
 
-    ig = Instagram()
     media_id = ig.post_reel(media, caption) if queue == "reels" else ig.post_carousel(media, caption)
     print(f"Publicado com sucesso! ID da mídia: {media_id}")
     archive(queue_dir, folder, media_id)
