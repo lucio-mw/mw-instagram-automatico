@@ -7,6 +7,7 @@ Roda no Mac (agendado pelo launchd, ver instalar_mac.sh). A cada execução:
        carrosséis -> move para Carrosseis Claude/Postados/Postado-<nome>
        reels      -> renomeia para Postagem Diaria Instagram/Postado-<nome>
   3. copia para posts/ os conteúdos novos e prontos, e envia ao GitHub.
+     Nos reels, coloca de fundo uma das trilhas da pasta "Audios Reels".
 
 Um conteúdo é considerado pronto quando tem legenda.txt, a mídia e nenhum
 arquivo foi alterado nos últimos minutos (para não pegar pela metade um
@@ -28,6 +29,11 @@ INSTAGRAM_DIR = (
 )
 CAROUSELS_SRC = INSTAGRAM_DIR / "Carrosseis Claude"
 REELS_SRC = INSTAGRAM_DIR / "Postagem Diaria Instagram"
+# Trilhas livres de direitos que vão de fundo nos reels (alternadas entre eles).
+# Pasta vazia ou inexistente = reels publicados sem áudio.
+AUDIO_SRC = INSTAGRAM_DIR / "Audios Reels"
+AUDIO_EXTENSIONS = {".mp3", ".m4a", ".wav", ".aac"}
+AUDIO_MARKER = "audio.txt"
 CAPTION_FILE = "legenda.txt"
 POSTED_PREFIX = "Postado-"
 READY_AFTER_SECONDS = 5 * 60
@@ -152,7 +158,10 @@ class Source:
         tmp.mkdir(parents=True)
         self.copy_media(folder, tmp)
         (tmp / CAPTION_FILE).write_text(caption + "\n", encoding="utf-8")
-        tmp.rename(self.queue_dir / folder.name)
+        dest = self.queue_dir / folder.name
+        if dest.exists():
+            shutil.rmtree(dest)
+        tmp.rename(dest)
         log(f"{self.queue}: {folder.name} adicionado à fila")
         return True
 
@@ -198,8 +207,47 @@ class Reels(Source):
     def validate_media(self, folder):
         return None if (folder / self.VIDEO).exists() else f"falta o {self.VIDEO}"
 
+    def tracks(self):
+        if not AUDIO_SRC.is_dir():
+            return []
+        return sorted(p for p in AUDIO_SRC.iterdir() if p.suffix.lower() in AUDIO_EXTENSIONS)
+
+    def pending(self):
+        found = super().pending()
+        # Reels que entraram na fila sem áudio são refeitos quando houver trilhas
+        if self.tracks() and self.queue_dir.is_dir():
+            for queued in sorted(self.queue_dir.iterdir()):
+                source = self.src_dir / queued.name
+                if (queued.is_dir() and queued.name != "publicados"
+                        and not (queued / AUDIO_MARKER).exists() and source.is_dir()):
+                    found.append(source)
+        return found
+
     def copy_media(self, folder, dst):
-        shutil.copy2(folder / self.VIDEO, dst / "video.mp4")
+        video = folder / self.VIDEO
+        tracks = self.tracks()
+        if not tracks:
+            shutil.copy2(video, dst / "video.mp4")
+            return
+        number = re.match(r"\d+", folder.name)
+        track = tracks[(int(number.group()) - 1 if number else 0) % len(tracks)]
+        duration = float(subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=nw=1:nk=1", str(video)],
+            check=True, capture_output=True, text=True,
+        ).stdout)
+        fade = min(1.5, duration / 4)
+        subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error",
+             "-i", str(video), "-stream_loop", "-1", "-i", str(track),
+             "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy",
+             "-af", f"afade=t=in:d=0.3,afade=t=out:st={duration - fade:.2f}:d={fade:.2f},"
+                    "loudnorm=I=-16:TP=-1.5",
+             "-c:a", "aac", "-b:a", "192k", "-ar", "44100",
+             "-t", f"{duration:.2f}", "-movflags", "+faststart", str(dst / "video.mp4")],
+            check=True, capture_output=True,
+        )
+        (dst / AUDIO_MARKER).write_text(track.name + "\n", encoding="utf-8")
 
 
 def main():

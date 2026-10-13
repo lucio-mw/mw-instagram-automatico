@@ -35,6 +35,10 @@ Instagram  →  registra em posts/<fila>/publicados/<nome>.txt
 - Para entrar na fila, um conteúdo precisa ter `legenda.txt`, a mídia, e ficar
   5 minutos sem alteração (para não pegar um carrossel ainda sendo gerado).
 - Os posts saem em ordem: data (carrosséis) ou número (reels).
+- **Áudio dos reels:** coloque trilhas livres de direitos (.mp3/.m4a/.wav) em
+  `Documentos MW Capital/Instagram/Audios Reels`. Cada reel recebe uma delas de
+  fundo, alternando (reel 1 → trilha 1, reel 2 → trilha 2...), com fade no fim.
+  Reels que já estavam na fila sem áudio são refeitos automaticamente.
 - Se uma legenda passar de 2.200 caracteres ou 30 hashtags, ou um carrossel tiver
   mais de 10 slides, o Mac mostra uma notificação e o post não entra na fila.
 - **Para não postar algo que já está na fila:** apague a pasta em `posts/` no GitHub.
