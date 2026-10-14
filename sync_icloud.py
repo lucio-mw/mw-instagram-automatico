@@ -294,12 +294,17 @@ def trigger_if_due():
 
 
 def main():
-    try:
-        git("pull", "--rebase", "--autostash", "-q")
-    except subprocess.CalledProcessError as e:
-        notify("Não consegui baixar do GitHub (git pull). Veja o log.")
-        log(e.stderr)
-        sys.exit(1)
+    # logo depois de acordar a rede pode demorar alguns segundos para voltar
+    for attempt in range(6):
+        try:
+            git("pull", "--rebase", "--autostash", "-q")
+            break
+        except subprocess.CalledProcessError as e:
+            if attempt == 5:
+                notify("Não consegui baixar do GitHub (git pull). Veja o log.")
+                log(e.stderr)
+                sys.exit(1)
+            time.sleep(10)
 
     sync_queue()
     try:
