@@ -286,7 +286,16 @@ def trigger_if_due():
             triggers[slot] = count + 1
             TRIGGERS_FILE.write_text(json.dumps(triggers))
         return
-    gh("workflow", "run", "instagram.yml", "-R", REPO, "-f", "fila=auto")
+    # a API do GitHub às vezes devolve erro 500 passageiro: tenta de novo na hora
+    for attempt in range(5):
+        try:
+            gh("workflow", "run", "instagram.yml", "-R", REPO, "-f", "fila=auto")
+            break
+        except subprocess.CalledProcessError as e:
+            log(f"Disparo falhou (tentativa {attempt + 1}/5): {e.stderr.strip()}")
+            if attempt == 4:
+                raise
+            time.sleep(20)
     triggers = {k: v for k, v in triggers.items() if k[:10] == slot[:10]}  # só guarda hoje
     triggers[slot] = count + 1
     TRIGGERS_FILE.write_text(json.dumps(triggers))
