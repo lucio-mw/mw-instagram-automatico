@@ -4,3 +4,4 @@ __pycache__/
 posts/*/.*.tmp/
 preview.html
 preview-trilhas.html
+.disparos.json

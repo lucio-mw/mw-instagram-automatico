@@ -78,8 +78,12 @@ tail -f ~/Library/Logs/mw-instagram-sync.log
 
 ## Mudar horários
 
-O agendador do GitHub atrasa (às vezes horas) e pode pular execuções. Por isso o
-workflow roda a cada 15 minutos e o script publica o que estiver **vencido** na
+O agendador do GitHub atrasa muito (na prática roda a cada ~5 horas). Por isso
+quem dispara a publicação é o **Mac**: a cada 15 min o `sync_icloud.py` confere a
+agenda e, se um horário venceu, roda o workflow no GitHub (até 3 tentativas por
+horário, depois avisa por notificação). O agendamento do GitHub fica de reserva
+para quando o Mac estiver desligado. Em ambos os casos o script publica o que
+estiver **vencido** na
 `AGENDA` de `post_instagram.py` (horário de Brasília). Um horário perdido é
 recuperado por até 6 horas (`JANELA_HORAS`); depois disso é descartado, para não
 acumular posts. Para mudar os horários, edite só a `AGENDA`.

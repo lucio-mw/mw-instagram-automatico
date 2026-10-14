@@ -6,7 +6,9 @@ Roda no Mac (agendado pelo launchd, ver instalar_mac.sh). A cada execução:
   2. marca no iCloud o que foi publicado:
        carrosséis -> move para Carrosseis Claude/Postados/Postado-<nome>
        reels      -> renomeia para Postagem Diaria Instagram/Postado-<nome>
-  3. copia para posts/ os conteúdos novos e prontos, e envia ao GitHub.
+  3. copia para posts/ os conteúdos novos e prontos, e envia ao GitHub;
+  4. se um horário da agenda venceu sem post, dispara a publicação no GitHub
+     (o agendador do próprio GitHub atrasa horas e fica só como reserva).
      Nos reels, coloca de fundo uma das trilhas da pasta "Audios Reels".
 
 Um conteúdo é considerado pronto quando tem legenda.txt, a mídia e nenhum
@@ -14,6 +16,7 @@ arquivo foi alterado nos últimos minutos (para não pegar pela metade um
 carrossel que ainda está sendo gerado).
 """
 
+import json
 import re
 import shutil
 import subprocess
@@ -42,6 +45,9 @@ MAX_HASHTAGS = 30
 MAX_CAROUSEL = 10
 # A API aceita imagens entre 4:5 (retrato) e 1.91:1 (paisagem)
 MAX_HEIGHT_RATIO = 1.25
+REPO = "lucio-mw/mw-instagram-automatico"
+TRIGGERS_FILE = ROOT / ".disparos.json"  # local, fora do git
+MAX_TRIGGERS_PER_SLOT = 3  # se falhar 3 vezes, para de insistir e avisa
 
 
 def log(msg):
@@ -250,6 +256,43 @@ class Reels(Source):
         (dst / AUDIO_MARKER).write_text(track.name + "\n", encoding="utf-8")
 
 
+def gh(*args):
+    return subprocess.run(
+        ["gh", *args], cwd=ROOT, check=True, capture_output=True, text=True
+    ).stdout.strip()
+
+
+def trigger_if_due():
+    """Dispara a publicação no GitHub se um horário da agenda venceu sem post."""
+    from post_instagram import due_slot
+
+    due = due_slot()
+    if due is None:
+        return
+    queue, slot = due
+    running = gh("run", "list", "-R", REPO, "--workflow", "instagram.yml",
+                 "--json", "status", "-q", '[.[] | select(.status != "completed")] | length')
+    if running != "0":
+        log(f"Horário {slot} vencido, mas já há uma publicação em andamento.")
+        return
+    try:
+        triggers = json.loads(TRIGGERS_FILE.read_text())
+    except (OSError, ValueError):
+        triggers = {}
+    count = triggers.get(slot, 0)
+    if count >= MAX_TRIGGERS_PER_SLOT:
+        if count == MAX_TRIGGERS_PER_SLOT:
+            notify(f"A publicação de {slot} falhou {count} vezes. Veja a aba Actions no GitHub.")
+            triggers[slot] = count + 1
+            TRIGGERS_FILE.write_text(json.dumps(triggers))
+        return
+    gh("workflow", "run", "instagram.yml", "-R", REPO, "-f", "fila=auto")
+    triggers = {k: v for k, v in triggers.items() if k[:10] == slot[:10]}  # só guarda hoje
+    triggers[slot] = count + 1
+    TRIGGERS_FILE.write_text(json.dumps(triggers))
+    log(f"Horário {slot} ({queue}) vencido: publicação disparada no GitHub.")
+
+
 def main():
     try:
         git("pull", "--rebase", "--autostash", "-q")
@@ -258,6 +301,15 @@ def main():
         log(e.stderr)
         sys.exit(1)
 
+    sync_queue()
+    try:
+        trigger_if_due()
+    except subprocess.CalledProcessError as e:
+        notify("Não consegui disparar a publicação no GitHub. Veja o log.")
+        log(e.stderr)
+
+
+def sync_queue():
     changed = False
     for source in (Carousels(), Reels()):
         source.mark_published()
