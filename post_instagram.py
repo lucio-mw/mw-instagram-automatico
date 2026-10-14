@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """Publica no Instagram o próximo post de uma fila.
 
-Uso:  python post_instagram.py carrosseis
-      python post_instagram.py reels
+Uso:  python post_instagram.py auto         publica o que estiver vencido na agenda
+      python post_instagram.py reels        publica o próximo reel agora (extra)
+      python post_instagram.py carrosseis   publica o próximo carrossel agora (extra)
+
+O agendador do GitHub atrasa e às vezes pula execuções, então o modo "auto"
+roda a cada 15 minutos e confere a AGENDA: se um horário de hoje já passou (há
+menos de JANELA_HORAS) e ainda não tem post registrado, publica agora.
 
 Cada fila é uma pasta em posts/ com uma subpasta por post, já preparada pelo
 sync_icloud.py:
@@ -38,7 +43,8 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -48,6 +54,9 @@ VIDEO_FILE = "video.mp4"
 IMAGE_EXTENSIONS = {".jpg", ".jpeg"}  # a API do Instagram só aceita JPEG
 MAX_CAROUSEL = 10
 QUEUES = ("carrosseis", "reels")
+TIMEZONE = ZoneInfo("America/Sao_Paulo")
+AGENDA = [("09:00", "reels"), ("12:00", "carrosseis"), ("19:00", "reels")]
+JANELA_HORAS = 6  # depois disso um horário perdido é descartado
 
 
 def env(name, default=None, required=False):
@@ -157,22 +166,49 @@ class Instagram:
         return self.publish(container)
 
 
-def archive(queue_dir, folder, media_id):
+def archive(queue_dir, folder, media_id, slot=None):
     published = queue_dir / "publicados"
     published.mkdir(exist_ok=True)
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    (published / f"{folder.name}.txt").write_text(
-        f"publicado_em: {now}\nmedia_id: {media_id}\n", encoding="utf-8"
-    )
+    record = f"publicado_em: {now}\nmedia_id: {media_id}\n"
+    if slot:
+        record += f"horario: {slot}\n"
+    (published / f"{folder.name}.txt").write_text(record, encoding="utf-8")
     shutil.rmtree(folder)
 
 
-def main():
-    if len(sys.argv) != 2 or sys.argv[1] not in QUEUES:
-        sys.exit(f"Uso: python {Path(__file__).name} {'|'.join(QUEUES)}")
-    queue = sys.argv[1]
-    queue_dir = POSTS_DIR / queue
+def due_slot():
+    """Devolve (fila, horário) do primeiro horário vencido de hoje sem post, ou None."""
+    now = datetime.now(TIMEZONE)
+    filled = set()
+    for record in POSTS_DIR.glob("*/publicados/*.txt"):
+        for line in record.read_text(encoding="utf-8").splitlines():
+            if line.startswith("horario: "):
+                filled.add(line[len("horario: "):].strip())
+    for hhmm, queue in AGENDA:
+        hour, minute = map(int, hhmm.split(":"))
+        when = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        slot = when.strftime("%Y-%m-%d %H:%M")
+        if when <= now < when + timedelta(hours=JANELA_HORAS) and slot not in filled:
+            if next_post(POSTS_DIR / queue) is not None:
+                return queue, slot
+    return None
 
+
+def main():
+    if len(sys.argv) != 2 or sys.argv[1] not in QUEUES + ("auto",):
+        sys.exit(f"Uso: python {Path(__file__).name} auto|{'|'.join(QUEUES)}")
+    slot = None
+    if sys.argv[1] == "auto":
+        due = due_slot()
+        if due is None:
+            print("Nenhum horário vencido com post na fila. Nada a publicar.")
+            return
+        queue, slot = due
+        print(f"Horário {slot} ({queue}) vencido e ainda sem post.")
+    else:
+        queue = sys.argv[1]
+    queue_dir = POSTS_DIR / queue
     folder = next_post(queue_dir)
     if folder is None:
         print(f"Fila '{queue}' vazia. Nada a publicar.")
@@ -208,7 +244,7 @@ def main():
 
     media_id = ig.post_reel(media, caption) if queue == "reels" else ig.post_carousel(media, caption)
     print(f"Publicado com sucesso! ID da mídia: {media_id}")
-    archive(queue_dir, folder, media_id)
+    archive(queue_dir, folder, media_id, slot)
 
 
 if __name__ == "__main__":

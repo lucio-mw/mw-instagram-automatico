@@ -2,17 +2,17 @@ name: Instagram automático
 
 on:
   schedule:
-    # Horários em UTC (Brasília = UTC-3). O GitHub pode atrasar alguns minutos.
-    - cron: "0 12 * * *" # 09:00 Brasília - reel
-    - cron: "0 15 * * *" # 12:00 Brasília - carrossel (se houver novo)
-    - cron: "0 22 * * *" # 19:00 Brasília - reel
+    # O agendador do GitHub atrasa/pula execuções, então roda a cada 15 min e o
+    # script publica o que estiver vencido na AGENDA (post_instagram.py):
+    # reels 09:00 e 19:00, carrossel 12:00 (horário de Brasília).
+    - cron: "7,22,37,52 * * * *"
   workflow_dispatch: # rodar manualmente pela aba Actions
     inputs:
       fila:
-        description: "O que publicar"
+        description: "auto = o que estiver vencido na agenda; reels/carrosseis = publicar um extra agora"
         type: choice
-        options: [reels, carrosseis]
-        default: reels
+        options: [auto, reels, carrosseis]
+        default: auto
       dry_run:
         description: "Só simular (não publica)"
         type: boolean
@@ -37,7 +37,7 @@ jobs:
 
       - name: Publicar próximo post da fila
         env:
-          FILA: ${{ inputs.fila || (github.event.schedule == '0 15 * * *' && 'carrosseis' || 'reels') }}
+          FILA: ${{ inputs.fila || 'auto' }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
           IG_API_HOST: ${{ vars.IG_API_HOST }}

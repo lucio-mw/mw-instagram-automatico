@@ -78,5 +78,11 @@ tail -f ~/Library/Logs/mw-instagram-sync.log
 
 ## Mudar horários
 
-Edite os `cron` em `.github/workflows/instagram.yml` (horário em UTC; Brasília = UTC−3).
-Se mudar o horário do carrossel, mude também o `'0 15 * * *'` na linha `FILA:`.
+O agendador do GitHub atrasa (às vezes horas) e pode pular execuções. Por isso o
+workflow roda a cada 15 minutos e o script publica o que estiver **vencido** na
+`AGENDA` de `post_instagram.py` (horário de Brasília). Um horário perdido é
+recuperado por até 6 horas (`JANELA_HORAS`); depois disso é descartado, para não
+acumular posts. Para mudar os horários, edite só a `AGENDA`.
+
+Disparar manualmente com `fila=reels` ou `fila=carrosseis` publica um post
+**extra** na hora, sem contar como um horário da agenda.
