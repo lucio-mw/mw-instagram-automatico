@@ -90,11 +90,27 @@ def images_in(folder):
     )
 
 
+def post_date(folder):
+    """Data do começo do nome (2026-10-22-tema), ou None se não houver."""
+    match = re.match(r"(\d{4})-(\d{2})-(\d{2})-", folder.name)
+    return datetime(*map(int, match.groups())).date() if match else None
+
+
 def next_post(queue_dir):
+    """Próximo post da fila. Posts com data no nome não saem antes dessa data, e o
+    post marcado para hoje tem prioridade sobre atrasados (ex.: "Natal Luz começa
+    hoje" sai no dia certo mesmo que um dia anterior tenha falhado)."""
     if not queue_dir.exists():
         return None
-    folders = [p for p in queue_dir.iterdir() if p.is_dir() and p.name != "publicados"]
-    return min(folders, key=sort_key) if folders else None
+    today = datetime.now(TIMEZONE).date()
+    folders = [
+        p for p in queue_dir.iterdir()
+        if p.is_dir() and p.name != "publicados" and (post_date(p) or today) <= today
+    ]
+    if not folders:
+        return None
+    for_today = [p for p in folders if post_date(p) == today]
+    return min(for_today or folders, key=sort_key)
 
 
 def public_url(path):
