@@ -303,13 +303,14 @@ def trigger_if_due():
 
 
 def main():
-    # logo depois de acordar a rede pode demorar alguns segundos para voltar
-    for attempt in range(6):
+    # ao acordar sozinho o Wi-Fi pode levar alguns minutos para voltar
+    # (o caffeinate do app mantém o Mac acordado enquanto isso)
+    for attempt in range(24):
         try:
             git("pull", "--rebase", "--autostash", "-q")
             break
         except subprocess.CalledProcessError as e:
-            if attempt == 5:
+            if attempt == 23:
                 notify("Não consegui baixar do GitHub (git pull). Veja o log.")
                 log(e.stderr)
                 sys.exit(1)

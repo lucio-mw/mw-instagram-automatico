@@ -211,24 +211,13 @@ def due_slot():
     return None
 
 
-def main():
-    if len(sys.argv) != 2 or sys.argv[1] not in QUEUES + ("auto",):
-        sys.exit(f"Uso: python {Path(__file__).name} auto|{'|'.join(QUEUES)}")
-    slot = None
-    if sys.argv[1] == "auto":
-        due = due_slot()
-        if due is None:
-            print("Nenhum horário vencido com post na fila. Nada a publicar.")
-            return
-        queue, slot = due
-        print(f"Horário {slot} ({queue}) vencido e ainda sem post.")
-    else:
-        queue = sys.argv[1]
+def publish_next(queue, slot=None):
+    """Publica o próximo post da fila. Devolve True se publicou."""
     queue_dir = POSTS_DIR / queue
     folder = next_post(queue_dir)
     if folder is None:
         print(f"Fila '{queue}' vazia. Nada a publicar.")
-        return
+        return False
 
     caption_path = folder / CAPTION_FILE
     caption = caption_path.read_text(encoding="utf-8").strip() if caption_path.exists() else ""
@@ -256,11 +245,34 @@ def main():
         )
         print(f"Conexão OK com a conta @{account.get('username')}.")
         print("DRY_RUN=1: nada foi publicado.")
-        return
+        return False
 
     media_id = ig.post_reel(media, caption) if queue == "reels" else ig.post_carousel(media, caption)
     print(f"Publicado com sucesso! ID da mídia: {media_id}")
     archive(queue_dir, folder, media_id, slot)
+    return True
+
+
+def main():
+    if len(sys.argv) != 2 or sys.argv[1] not in QUEUES + ("auto",):
+        sys.exit(f"Uso: python {Path(__file__).name} auto|{'|'.join(QUEUES)}")
+    if sys.argv[1] != "auto":
+        publish_next(sys.argv[1])
+        return
+    # publica todos os horários vencidos (ex.: o das 9h atrasou e já deu 12h)
+    published = 0
+    for _ in range(len(AGENDA)):
+        due = due_slot()
+        if due is None:
+            break
+        queue, slot = due
+        print(f"Horário {slot} ({queue}) vencido e ainda sem post.")
+        if not publish_next(queue, slot):
+            break
+        published += 1
+        print()
+    if published == 0:
+        print("Nenhum horário vencido com post na fila. Nada a publicar.")
 
 
 if __name__ == "__main__":
