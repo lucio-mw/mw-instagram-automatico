@@ -1,0 +1,40 @@
+name: Métricas do Instagram
+
+on:
+  workflow_dispatch: # roda pela aba Actions ou por `gh workflow run metricas.yml`
+
+permissions:
+  contents: read
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Coletar métricas
+        env:
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_API_HOST: ${{ vars.IG_API_HOST }}
+        run: python metricas_instagram.py
+
+      # o repositório é público: só o artefato cifrado sai daqui (a chave privada fica no Mac)
+      - name: Cifrar
+        run: |
+          openssl rand -out chave.bin 32
+          openssl enc -aes-256-cbc -pbkdf2 -salt -in metricas.json -out metricas.json.enc -pass file:chave.bin
+          openssl pkeyutl -encrypt -pubin -inkey metricas_chave_publica.pem -pkeyopt rsa_padding_mode:oaep -in chave.bin -out chave.bin.enc
+          rm -f metricas.json chave.bin
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: metricas-cifradas
+          path: |
+            metricas.json.enc
+            chave.bin.enc
+          retention-days: 7
