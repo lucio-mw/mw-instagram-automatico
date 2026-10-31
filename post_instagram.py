@@ -13,7 +13,7 @@ Cada fila é uma pasta em posts/ com uma subpasta por post, já preparada pelo
 sync_icloud.py:
 
   posts/carrosseis/<nome>/slide-01.jpg ... slide-NN.jpg + legenda.txt
-  posts/reels/<nome>/video.mp4 + legenda.txt
+  posts/reels/<nome>/video.mp4 + legenda.txt (+ capa.jpg opcional, capa da grade)
 
 Os posts saem em ordem (número/data do começo do nome). Depois de publicado, a
 subpasta é apagada e fica só um registro em posts/<fila>/publicados/<nome>.txt,
@@ -51,6 +51,7 @@ ROOT = Path(__file__).resolve().parent
 POSTS_DIR = ROOT / "posts"
 CAPTION_FILE = "legenda.txt"
 VIDEO_FILE = "video.mp4"
+COVER_FILE = "capa.jpg"
 IMAGE_EXTENSIONS = {".jpg", ".jpeg"}  # a API do Instagram só aceita JPEG
 MAX_CAROUSEL = 10
 QUEUES = ("carrosseis", "reels")
@@ -174,9 +175,11 @@ class Instagram:
         return self.publish(container)
 
     def post_reel(self, video, caption):
-        container = self.create_container(
-            media_type="REELS", video_url=public_url(video), caption=caption, share_to_feed="true"
-        )["id"]
+        params = dict(media_type="REELS", video_url=public_url(video), caption=caption, share_to_feed="true")
+        cover = video.parent / COVER_FILE
+        if cover.exists():
+            params["cover_url"] = public_url(cover)
+        container = self.create_container(**params)["id"]
         print("  vídeo enviado, aguardando processamento...")
         self.wait_ready(container)
         return self.publish(container)

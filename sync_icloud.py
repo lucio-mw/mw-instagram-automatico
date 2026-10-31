@@ -231,6 +231,18 @@ class Reels(Source):
 
     def copy_media(self, folder, dst):
         video = folder / self.VIDEO
+        if (folder / "capa.jpg").exists():
+            shutil.copy2(folder / "capa.jpg", dst / "capa.jpg")
+        # Reel em motion já vem com narração e música: não troca o áudio
+        own_audio = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index",
+             "-of", "csv=p=0", str(video)],
+            check=True, capture_output=True, text=True,
+        ).stdout.strip()
+        if own_audio:
+            shutil.copy2(video, dst / "video.mp4")
+            (dst / AUDIO_MARKER).write_text("áudio próprio\n", encoding="utf-8")
+            return
         tracks = self.tracks()
         if not tracks:
             shutil.copy2(video, dst / "video.mp4")
