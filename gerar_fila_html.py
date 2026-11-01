@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Gera fila.html: o próximo post em destaque, o que já saiu hoje e a fila
-completa (reels às 9h/19h, carrosséis às 12h na data do nome).
+completa (reels às 7h30, 10h, 12h30, 15h, 18h e 21h, carrosséis às 12h na data do nome).
 
 Uso: python3 gerar_fila_html.py   (rode depois de um git pull)
 """
@@ -16,7 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 POSTS = ROOT / "posts"
 OUT = ROOT / "fila.html"
-REEL_HOURS = ("09:00", "19:00")
+REEL_HOURS = ("07:30", "10:00", "12:30", "15:00", "18:00", "21:00")
 CAROUSEL_HOUR = "12:00"
 WEEKDAYS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
 
@@ -159,7 +159,7 @@ def main():
     end = f"até {items[-1][0]:%d/%m}" if items else "vazia"
     lead = (
         f"{len(items)} posts na fila ({reels} Reels e {len(items) - reels} carrosséis), {end}. "
-        f"Reels às 9h e 19h; carrossel às 12h na data do nome. Atualizado em {now:%d/%m às %H:%M}."
+        f"Reels às 7h30, 10h, 12h30, 15h, 18h e 21h; carrossel às 12h na data do nome. Atualizado em {now:%d/%m às %H:%M}."
     )
     OUT.write_text(
         '<!doctype html><html lang="pt-br"><head><meta charset="utf-8">'

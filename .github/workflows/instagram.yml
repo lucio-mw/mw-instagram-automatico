@@ -4,7 +4,7 @@ on:
   schedule:
     # O agendador do GitHub atrasa/pula execuções, então roda a cada 15 min e o
     # script publica o que estiver vencido na AGENDA (post_instagram.py):
-    # reels 09:00 e 19:00, carrossel 12:00 (horário de Brasília).
+    # reels 07:30, 10:00, 12:30, 15:00, 18:00 e 21:00, carrossel 12:00 (horário de Brasília).
     - cron: "7,22,37,52 * * * *"
   workflow_dispatch: # rodar manualmente pela aba Actions
     inputs:

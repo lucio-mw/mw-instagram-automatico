@@ -5,9 +5,9 @@ Publica automaticamente no **@mwcapital.inc**, usando a API oficial da Meta
 
 | Horário (Brasília) | O quê |
 |--------------------|-------|
-| 09:00 | Reel da *Postagem Diaria Instagram* |
+| 07:30, 10:00 | Reel da *Postagem Diaria Instagram* |
 | 12:00 | Carrossel novo da *Carrosseis Claude* (se houver) |
-| 19:00 | Reel da *Postagem Diaria Instagram* |
+| 12:30, 15:00, 18:00, 21:00 | Reel da *Postagem Diaria Instagram* |
 
 ## Como funciona
 

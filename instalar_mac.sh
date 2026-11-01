@@ -47,9 +47,13 @@ cat > "$PLIST" <<EOF
   <!-- também nos horários dos posts (o Mac acorda neles: ver instalar_despertar.sh) -->
   <key>StartCalendarInterval</key>
   <array>
-    <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>1</integer></dict>
+    <dict><key>Hour</key><integer>7</integer><key>Minute</key><integer>31</integer></dict>
+    <dict><key>Hour</key><integer>10</integer><key>Minute</key><integer>1</integer></dict>
     <dict><key>Hour</key><integer>12</integer><key>Minute</key><integer>1</integer></dict>
-    <dict><key>Hour</key><integer>19</integer><key>Minute</key><integer>1</integer></dict>
+    <dict><key>Hour</key><integer>12</integer><key>Minute</key><integer>31</integer></dict>
+    <dict><key>Hour</key><integer>15</integer><key>Minute</key><integer>1</integer></dict>
+    <dict><key>Hour</key><integer>18</integer><key>Minute</key><integer>1</integer></dict>
+    <dict><key>Hour</key><integer>21</integer><key>Minute</key><integer>1</integer></dict>
   </array>
   <key>RunAtLoad</key><true/>
 </dict>

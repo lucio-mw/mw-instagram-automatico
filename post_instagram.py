@@ -56,7 +56,10 @@ IMAGE_EXTENSIONS = {".jpg", ".jpeg"}  # a API do Instagram só aceita JPEG
 MAX_CAROUSEL = 10
 QUEUES = ("carrosseis", "reels")
 TIMEZONE = ZoneInfo("America/Sao_Paulo")
-AGENDA = [("09:00", "reels"), ("12:00", "carrosseis"), ("19:00", "reels")]
+AGENDA = [
+    ("07:30", "reels"), ("10:00", "reels"), ("12:00", "carrosseis"), ("12:30", "reels"),
+    ("15:00", "reels"), ("18:00", "reels"), ("21:00", "reels"),
+]
 JANELA_HORAS = 6  # depois disso um horário perdido é descartado
 
 
