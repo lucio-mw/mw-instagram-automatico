@@ -90,3 +90,11 @@ acumular posts. Para mudar os horários, edite só a `AGENDA`.
 
 Disparar manualmente com `fila=reels` ou `fila=carrosseis` publica um post
 **extra** na hora, sem contar como um horário da agenda.
+
+## Reels de teste
+
+Os reels das **12:30 e 15:00** (`TESTE_HORARIOS` em `post_instagram.py`) saem como
+**Reel de teste**: aparecem só para quem não segue o perfil e não entram na grade.
+Se forem bem, o próprio Instagram os passa para a grade e para os seguidores
+(`graduation_strategy: SS_PERFORMANCE`). Se a API recusar o teste, o reel sai
+normal para não perder o horário. O registro em `publicados/` ganha `teste: sim`.

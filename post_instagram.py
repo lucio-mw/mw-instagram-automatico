@@ -61,6 +61,9 @@ AGENDA = [
     ("15:00", "reels"), ("18:00", "reels"), ("21:00", "reels"),
 ]
 JANELA_HORAS = 6  # depois disso um horário perdido é descartado
+# Reels desses horários saem como "Reel de teste": só não seguidores veem, e o
+# Instagram passa para a grade/seguidores sozinho se for bem (SS_PERFORMANCE).
+TESTE_HORARIOS = {"12:30", "15:00"}
 
 
 def env(name, default=None, required=False):
@@ -177,24 +180,36 @@ class Instagram:
         self.wait_ready(container, interval=3)
         return self.publish(container)
 
-    def post_reel(self, video, caption):
+    def post_reel(self, video, caption, trial=False):
         params = dict(media_type="REELS", video_url=public_url(video), caption=caption, share_to_feed="true")
         cover = video.parent / COVER_FILE
         if cover.exists():
             params["cover_url"] = public_url(cover)
-        container = self.create_container(**params)["id"]
+        container = None
+        if trial:
+            try:
+                trial_params = json.dumps({"graduation_strategy": "SS_PERFORMANCE"})
+                container = self.create_container(**params, trial_params=trial_params)["id"]
+                print("  publicando como Reel de teste (só não seguidores).")
+            except SystemExit as e:
+                # se a API não aceitar o teste, publica normal para não perder o horário
+                print(f"  Reel de teste recusado, publicando normal:\n{e}")
+        if container is None:
+            container = self.create_container(**params)["id"]
         print("  vídeo enviado, aguardando processamento...")
         self.wait_ready(container)
         return self.publish(container)
 
 
-def archive(queue_dir, folder, media_id, slot=None):
+def archive(queue_dir, folder, media_id, slot=None, trial=False):
     published = queue_dir / "publicados"
     published.mkdir(exist_ok=True)
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     record = f"publicado_em: {now}\nmedia_id: {media_id}\n"
     if slot:
         record += f"horario: {slot}\n"
+    if trial:
+        record += "teste: sim\n"
     (published / f"{folder.name}.txt").write_text(record, encoding="utf-8")
     shutil.rmtree(folder)
 
@@ -253,9 +268,10 @@ def publish_next(queue, slot=None):
         print("DRY_RUN=1: nada foi publicado.")
         return False
 
-    media_id = ig.post_reel(media, caption) if queue == "reels" else ig.post_carousel(media, caption)
+    trial = queue == "reels" and slot is not None and slot[11:] in TESTE_HORARIOS
+    media_id = ig.post_reel(media, caption, trial) if queue == "reels" else ig.post_carousel(media, caption)
     print(f"Publicado com sucesso! ID da mídia: {media_id}")
-    archive(queue_dir, folder, media_id, slot)
+    archive(queue_dir, folder, media_id, slot, trial)
     return True
 
 

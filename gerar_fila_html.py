@@ -18,6 +18,7 @@ POSTS = ROOT / "posts"
 OUT = ROOT / "fila.html"
 REEL_HOURS = ("07:30", "10:00", "12:30", "15:00", "18:00", "21:00")
 CAROUSEL_HOUR = "12:00"
+TRIAL_HOURS = {"12:30", "15:00"}  # mesmo que TESTE_HORARIOS em post_instagram.py
 WEEKDAYS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
 
 
@@ -82,6 +83,8 @@ def card(when, kind, folder):
         img = thumb(folder / "video.mp4", 180, seek=3)
         track = (folder / "audio.txt").read_text().strip() if (folder / "audio.txt").exists() else ""
         meta = "trilha " + re.sub(r"^\d+-|\.m4a$", "", track).replace("-", " ") if track else "sem trilha"
+        if f"{when:%H:%M}" in TRIAL_HOURS:
+            meta += " · Reel de teste"
     else:
         img = thumb(sorted(folder.glob("slide-*.jpg"))[0], 180)
         meta = f"{len(list(folder.glob('slide-*.jpg')))} slides"
@@ -163,7 +166,7 @@ def main():
     )
     OUT.write_text(
         '<!doctype html><html lang="pt-br"><head><meta charset="utf-8">'
-        '<meta name="viewport" content="width=device-width,initial-scale=1"><title>Fila de posts</title>'
+        '<meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fila de posts</title>'
         f'<style>{CSS}</style></head><body><div class="wrap"><h1>Fila de posts · @mwcapital.inc</h1>'
         f'<p class="lead">{lead}</p>{"".join(parts)}</div></body></html>',
         encoding="utf-8",
