@@ -344,15 +344,19 @@ def sync_queue():
             changed |= source.enqueue(folder)
 
     if not changed:
-        log("Nada novo.")
-        return
-
-    git("add", "-A", "posts")
-    if not git("status", "--porcelain", "posts"):
-        return
-    git("commit", "-q", "-m", f"Fila atualizada pelo Mac em {datetime.now():%Y-%m-%d %H:%M}")
+        # um push que falhou antes (ex.: tempo esgotado) fica preso no Mac; reenvia
+        if git("rev-list", "--count", "@{u}..HEAD") == "0":
+            log("Nada novo.")
+            return
+        log("Há fila parada no Mac que não chegou ao GitHub; reenviando.")
+    else:
+        git("add", "-A", "posts")
+        if not git("status", "--porcelain", "posts"):
+            return
+        git("commit", "-q", "-m", f"Fila atualizada pelo Mac em {datetime.now():%Y-%m-%d %H:%M}")
     try:
-        git("push", "-q")
+        # lotes grandes de vídeo estouravam o tempo do GitHub (HTTP 408)
+        git("-c", "http.postBuffer=524288000", "push", "-q")
     except subprocess.CalledProcessError as e:
         notify("Não consegui enviar a fila ao GitHub (git push). Veja o log.")
         log(e.stderr)
