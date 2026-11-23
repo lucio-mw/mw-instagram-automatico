@@ -43,7 +43,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
@@ -57,9 +57,12 @@ MAX_CAROUSEL = 10
 QUEUES = ("carrosseis", "reels")
 TIMEZONE = ZoneInfo("America/Sao_Paulo")
 AGENDA = [
-    ("07:30", "reels"), ("10:00", "reels"), ("12:00", "carrosseis"), ("12:30", "reels"),
-    ("15:00", "reels"), ("18:00", "reels"), ("21:00", "reels"),
+    ("07:30", "reels"), ("08:45", "reels"), ("10:00", "reels"), ("12:00", "carrosseis"),
+    ("12:30", "reels"), ("15:00", "reels"), ("18:00", "reels"), ("19:30", "reels"),
+    ("21:00", "reels"),
 ]
+# Horários que só passam a valer numa data (8 reels por dia a partir de dezembro).
+HORARIOS_A_PARTIR_DE = {"08:45": date(2026, 12, 1), "19:30": date(2026, 12, 1)}
 JANELA_HORAS = 6  # depois disso um horário perdido é descartado
 # Reels desses horários saem como "Reel de teste": só não seguidores veem, e o
 # Instagram passa para a grade/seguidores sozinho se for bem (SS_PERFORMANCE).
@@ -223,6 +226,8 @@ def due_slot():
             if line.startswith("horario: "):
                 filled.add(line[len("horario: "):].strip())
     for hhmm, queue in AGENDA:
+        if now.date() < HORARIOS_A_PARTIR_DE.get(hhmm, now.date()):
+            continue
         hour, minute = map(int, hhmm.split(":"))
         when = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
         slot = when.strftime("%Y-%m-%d %H:%M")
